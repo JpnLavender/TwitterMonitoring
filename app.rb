@@ -1,48 +1,61 @@
-require "sinatra"
-require "twitter_oauth"
+require "twitter"
+require "curb"
+require "json"
 
-enable :sessions
+class TwitterMonitoring
+  def initialize(config)
+    @config = config
+    @rest = Twitter::REST::Client.new(@config)
+    @stream = Twitter::Streaming::Client.new(@config)
+    @data = {
+      channel: "#chat",
+      username: "Monitoring",
+      icon_url: ":squirrel:"
+    }
+  end
+  attr_reader :config, :rest, :stream
 
-before do
-  @twitter = TwitterOAuth::Client.new(
-    :consumer_key => ENV.fetch("CONSUMER_KEY"),
-    :consumer_secret => ENV.fetch("CONSUMER_SECRET"),
-    :token => session[:access_token],
-    :secret => session[:secret_token])
-end
-
-get '/request_token' do
-  callback_url = "#{base_url}/access_token"
-  request_token = @twitter.request_token(:oauth_callback => callback_url)
-  session[:request_token] = request_token.token
-  session[:request_token_secret] = request_token.secret
-  redirect request_token.authorize_url
-end
-
-get '/access_token' do
-  begin
-    @access_token = @twitter.authorize(session[:request_token], session[:request_token_secret],
-                                       :oauth_verifier => params[:oauth_verifier])
-  rescue OAuth::Unauthorized => @exception
-    return erb :authorize_fail
+  def run
+    streaming_run
   end
 
-  session[:access_token] = @access_token.token
-  session[:access_token_secret] = @access_token.secret
-  # session[:user_id] = @twitter.info['user_id']
-  # session[:screen_name] = @twitter.info['screen_name']
-  # session[:profile_image] = @twitter.info['profile_image_url_https']
+  def verification(tweet)
+    puts tweet.user.screen_name
+    ENV.fetch("USERS").split(",").include?(tweet.user.screen_name)
+  end
 
-  redirect '/'
+  def streaming_run
+    @stream.user do |tweet|
+      next unless tweet.is_a?(Twitter::Tweet)
+      next unless verification(tweet)
+      slack_post(tweet)
+    end
+  end
+  def slack_post(tweet)
+    attachments = [{
+      author_icon:    tweet.user.profile_image_url.to_s,
+      author_name:    tweet.user.name,
+      author_subname: "@#{tweet.user.screen_name}",
+      text:           tweet.full_text,
+      author_link:    tweet.uri.to_s,
+      color:          tweet.user.profile_link_color
+    }]
+    unless tweet.media.empty?
+      tweet.media.each_with_index do |v, i| 
+        attachments[i] ||= {}
+        attachments[i].merge!({image_url: v.media_url})
+      end
+    end
+    Curl.post(ENV.fetch("SLACK_WEBHOOKS_TOKEN"), @data.merge(attachments: attachments).to_json)
+  end
 end
 
-def base_url
-  default_port = (request.scheme == "http") ? 80 : 443
-  port = (request.port == default_port) ? "" : ":#{request.port.to_s}"
-  "#{request.scheme}://#{request.host}#{port}"
-end
+CONFIG = {
+  consumer_key:        ENV.fetch("CONSUMER_KEY"),
+  consumer_secret:     ENV.fetch("CONSUMER_SECRET"),
+  access_token:        ENV.fetch("ACCESS_TOKEN"),
+  access_token_secret: ENV.fetch("ACCESS_TOKEN_SECRET")
+}
 
-get '/' do
-  erb :index
-end
-
+app = TwitterMonitoring.new(CONFIG)
+app.run
