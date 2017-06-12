@@ -5,6 +5,8 @@
     <title></title>
   </head>
   <body>
-    HelloWorld
+    <a href="/request_token">Twitter Login</a>
+    <%= session[:screen_name] %>
+    <img src="<%= session[:profile_image] %>" alt="">
   </body>
 </html>
