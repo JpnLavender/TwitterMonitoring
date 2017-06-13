@@ -22,6 +22,11 @@ class TwitterMonitoring
   def verification(tweet)
     puts tweet.user.screen_name
     ENV.fetch("USERS").split(",").include?(tweet.user.screen_name)
+    if tweet.user.screen_name == "5percent_Dora"
+      return (tweet.full_text =~ /ﾎﾞﾛﾝ/ ? true : false)
+    else
+      return false
+    end
   end
 
   def streaming_run
