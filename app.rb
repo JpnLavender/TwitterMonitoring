@@ -25,7 +25,7 @@ class TwitterMonitoring
     if tweet.user.screen_name == "5percent_Dora"
       return (tweet.full_text =~ /ﾎﾞﾛﾝ/ ? true : false)
     else
-      return false
+      return true
     end
   end
 
