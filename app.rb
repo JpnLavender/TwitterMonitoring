@@ -8,20 +8,15 @@ class TwitterMonitoring
     @rest = Twitter::REST::Client.new(@config)
     @stream = Twitter::Streaming::Client.new(@config)
     @data = {
-      channel: "#chat",
+      channel: "#twitte_monitoring",
       username: "Monitoring",
       icon_url: ":squirrel:"
     }
   end
   attr_reader :config, :rest, :stream
 
-  def run
-    streaming_run
-  end
-
   def verification(tweet)
     puts tweet.user.screen_name
-    ENV.fetch("USERS").split(",").include?(tweet.user.screen_name)
     if tweet.user.screen_name == "5percent_Dora"
       return (tweet.full_text =~ /ﾎﾞﾛﾝ/ ? true : false)
     else
@@ -63,4 +58,4 @@ CONFIG = {
 }
 
 app = TwitterMonitoring.new(CONFIG)
-app.run
+app.streaming_run
