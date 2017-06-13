@@ -8,7 +8,7 @@ class TwitterMonitoring
     @rest = Twitter::REST::Client.new(@config)
     @stream = Twitter::Streaming::Client.new(@config)
     @data = {
-      channel: "#twitte_monitoring",
+      channel: "#twitter_monitoring ",
       username: "Monitoring",
       icon_url: ":squirrel:"
     }
