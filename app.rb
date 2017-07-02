@@ -26,9 +26,13 @@ class TwitterMonitoring
 
   def streaming_run
     @stream.user do |tweet|
-      next unless tweet.is_a?(Twitter::Tweet)
-      next unless verification(tweet)
-      slack_post(tweet)
+      begin
+        next unless tweet.is_a?(Twitter::Tweet)
+        next unless verification(tweet)
+        slack_post(tweet)
+      rescue
+        next
+      end
     end
   end
   def slack_post(tweet)
