@@ -15,12 +15,22 @@ class TwitterMonitoring
   end
   attr_reader :config, :rest, :stream
 
+  def follow_users(screen_name)
+    all_friends = []
+    @rest.friend_ids(screen_name).each_slice(100).each do |slice|
+      @rest.users(slice).each do |friend|
+        @rest.follow(friend.id)
+      end
+    end
+  end
+
   def streaming_run
     @stream.user do |tweet|
       begin
         next unless tweet.is_a?(Twitter::Tweet)
         next unless tweet.full_text =~ /#{ENV.fetch("TARGET")}/
         slack_post(tweet)
+        follow_users(ENV.fetch("TARGET"))
       rescue
         next
       end
