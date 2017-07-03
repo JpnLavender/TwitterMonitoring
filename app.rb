@@ -15,20 +15,11 @@ class TwitterMonitoring
   end
   attr_reader :config, :rest, :stream
 
-  def verification(tweet)
-    puts tweet.user.screen_name
-    if tweet.user.screen_name == "5percent_Dora"
-      return (tweet.full_text =~ /ﾎﾞﾛﾝ/ ? true : false)
-    else
-      return true
-    end
-  end
-
   def streaming_run
     @stream.user do |tweet|
       begin
         next unless tweet.is_a?(Twitter::Tweet)
-        next unless verification(tweet)
+        next unless tweet.full_text =~ /#{ENV.fetch("TARGET")}/
         slack_post(tweet)
       rescue
         next
@@ -50,7 +41,10 @@ class TwitterMonitoring
         attachments[i].merge!({image_url: v.media_url})
       end
     end
-    Curl.post(ENV.fetch("SLACK_WEBHOOKS_TOKEN"), @data.merge(attachments: attachments).to_json)
+    Curl.post(
+      ENV.fetch("SLACK_WEBHOOKS_TOKEN"), 
+      @data.merge(attachments: attachments).to_json
+    )
   end
 end
 
