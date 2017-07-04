@@ -15,28 +15,21 @@ class TwitterMonitoring
   end
   attr_reader :config, :rest, :stream
 
-  def follow_users(screen_name)
-    @rest.friend_ids(screen_name).each_slice(100).each do |slice|
-      @rest.users(slice).each do |friend|
-        @rest.follow(friend.id)
-      end
-    end
-  end
-
   def streaming_run
     @stream.user do |tweet|
       begin
         next unless tweet.is_a?(Twitter::Tweet)
+        puts "@#{tweet.user.screen_name} #{tweet.full_text[0..20]}"
         next unless tweet.user.screen_name == ENV.fetch("TARGET") || tweet.full_text =~ /#{ENV.fetch("TARGET")}/
-        follow_users(ENV.fetch("TARGET"))
-        puts tweet.full_text
         slack_post(tweet)
       rescue
+        puts "Error: Streaming"
         next
       end
     end
   end
   def slack_post(tweet)
+    puts "RUN: SlackPost"
     attachments = [{
       author_icon:    tweet.user.profile_image_url.to_s,
       author_name:    tweet.user.name,
@@ -55,6 +48,7 @@ class TwitterMonitoring
       ENV.fetch("SLACK_WEBHOOKS_TOKEN"), 
       @data.merge(attachments: attachments).to_json
     )
+    puts "OK: Send POST"
   end
 end
 
