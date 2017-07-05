@@ -1,6 +1,7 @@
 require "twitter"
 require "curb"
 require "json"
+require "pry"
 
 class TwitterMonitoring
   def initialize(config)
@@ -15,12 +16,26 @@ class TwitterMonitoring
   end
   attr_reader :config, :rest, :stream
 
+  def find_reply_source(id)
+    puts "RUN: find_reply_source"
+    begin 
+      find_reply_source_id = @rest.status(id).in_reply_to_status_id
+      find_reply_source_data = @rest.status(find_reply_source_id)
+      slack_post(find_reply_source_data)
+    rescue
+      puts "ERROR: find_reply_source"
+    end
+  end
+
   def streaming_run
+    puts "RUN: Streaming"
+    binding.pry if "develop"== ARGV[0]
     @stream.user do |tweet|
       begin
         next unless tweet.is_a?(Twitter::Tweet)
         puts "@#{tweet.user.screen_name} #{tweet.full_text[0..20]}"
-        next unless tweet.user.screen_name == ENV.fetch("TARGET") || tweet.full_text =~ /#{ENV.fetch("TARGET")}/
+        next unless tweet.user.screen_name == ENV.fetch("TARGET")
+        find_reply_source(tweet.id)
         slack_post(tweet)
       rescue
         puts "Error: Streaming"
