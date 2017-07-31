@@ -30,19 +30,20 @@ class TwitterMonitoring
   def streaming_run
     puts "RUN: Streaming"
     binding.pry if "develop"== ARGV[0]
-    @stream.user do |tweet|
-      begin
+    begin
+      @stream.user do |tweet|
         next unless tweet.is_a?(Twitter::Tweet)
         puts "@#{tweet.user.screen_name} #{tweet.full_text[0..20]}"
         next unless tweet.user.screen_name == ENV.fetch("TARGET")
         find_reply_source(tweet.id)
         slack_post(tweet)
-      rescue
-        puts "Error: Streaming"
-        next
       end
+    rescue
+      puts "Error: Streaming"
+      streaming_run
     end
   end
+
   def slack_post(tweet)
     puts "RUN: SlackPost"
     attachments = [{
